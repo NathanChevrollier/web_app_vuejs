@@ -1,0 +1,31 @@
+@layer base {
+  html {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    background: theme('colors.slate.50');
+    color: theme('colors.slate.900');
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white font-semibold rounded-lg px-4 py-2 shadow hover:bg-primary/90 transition;
+  }
+  .card-section {
+    @apply bg-white rounded-2xl shadow border p-6 flex flex-col gap-2;
+  }
+  .section-title {
+    @apply text-2xl font-bold mb-2 tracking-tight;
+  }
+  .section-desc {
+    @apply text-muted-foreground mb-4;
+  }
+}
