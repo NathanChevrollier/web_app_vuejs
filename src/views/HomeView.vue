@@ -45,7 +45,3 @@
     </div>
   </section>
 </template>
-
-<script setup>
-// Rien à importer ici, tout est statique côté landing
-</script>
