@@ -48,11 +48,24 @@ function prevStep() {
   if (step.value > 1) step.value--
 }
 
+function resetForm() {
+  // Réinitialise le formulaire et revient à l'étape 1
+  formData.value = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    city: '',
+  }
+  step.value = 1
+}
+
 function submitForm() {
   // Ajoute la soumission à l'historique local
   history.value.unshift({ ...formData.value })
   saveHistory()
   alert('Formulaire envoyé : ' + JSON.stringify(formData.value))
+  // Reset et retour au début
+  resetForm()
 }
 </script>
 

@@ -1,123 +1,43 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast/use-toast'
 import { MapPin, Bell, Database, Touchpad, AlertTriangle, Users, Share2 } from 'lucide-vue-next'
+import { useSystemNotifications } from '@/composables/useSystemNotifications'
+import { useStorageItems } from '@/composables/useStorageItems'
+import { useGeolocation } from '@/composables/useGeolocation'
+import { useAlertCounter } from '@/composables/useAlertCounter'
+import { usePointerTracker } from '@/composables/usePointerTracker'
+import { useContactPicker } from '@/composables/useContactPicker'
+import { useWebShare } from '@/composables/useWebShare'
 
 const { toast } = useToast()
+const { notifPermission, sendSystemNotification, requestNotif } = useSystemNotifications()
 
-// --- Notifications système ---
-function sendSystemNotification(title: string, body: string) {
-  if (Notification.permission === 'granted') {
-    new Notification(title, { body, icon: '/favicon.ico' })
-  } else {
-    Notification.requestPermission().then((permission) => {
-      if (permission === 'granted') {
-        new Notification(title, { body, icon: '/favicon.ico' })
-      }
-    })
-  }
-}
+const {
+  storageValue,
+  storageItems,
+  addToStorage: addToStorageRaw,
+  removeFromStorage,
+  clearAllStorage,
+} = useStorageItems(sendSystemNotification)
 
-// --- Stockage Interne (LocalStorage) ---
-const storageValue = ref(localStorage.getItem('user_preference') || '')
-const saveToStorage = () => {
-  localStorage.setItem('user_preference', storageValue.value)
-  toast({ title: 'Succès', description: 'Valeur enregistrée dans LocalStorage' })
-  sendSystemNotification('Stockage local', 'Valeur enregistrée dans LocalStorage !')
+const addToStorage = () => {
+  const value = storageValue.value.trim()
+  if (!value) return
+
+  addToStorageRaw()
+  toast({ title: 'Ajouté', description: 'Élément sauvegardé dans LocalStorage' })
 }
 
-// --- Géolocalisation ---
-const coords = ref<{ lat: number; lng: number } | null>(null)
-const geoStatus = ref('Pas encore demandée')
-const getLocation = () => {
-  if (!navigator.geolocation) {
-    geoStatus.value = 'Non supportée'
-    sendSystemNotification('Géolocalisation', 'Non supportée sur cet appareil.')
-    return
-  }
-  geoStatus.value = 'Recherche...'
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      coords.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-      geoStatus.value = 'Localisé'
-      sendSystemNotification(
-        'Géolocalisation',
-        `Position : ${coords.value.lat.toFixed(4)}, ${coords.value.lng.toFixed(4)}`,
-      )
-    },
-    () => {
-      geoStatus.value = 'Erreur/Refusé'
-      sendSystemNotification('Géolocalisation', 'Erreur ou refus de la localisation.')
-    },
-  )
-}
-
-// --- Notifications ---
-const notifPermission = ref(Notification.permission)
-const requestNotif = async () => {
-  const permission = await Notification.requestPermission()
-  notifPermission.value = permission
-  if (permission === 'granted') {
-    sendSystemNotification('Notifications activées', 'Les notifications système sont activées !')
-  }
-}
-
-// --- Gestion Alertes (Système) ---
-const alertCount = ref(3)
-const incrementAlert = () => {
-  alertCount.value++
-  sendSystemNotification('Nouvelle alerte', `Tu as ${alertCount.value} alerte(s) !`)
-}
-
-// --- Pointer Events (Remplaçant Touch pour PC/Mobile) ---
-const pointerInfo = ref({ x: 0, y: 0, status: 'Aucun contact' })
-const handlePointerDown = (e: PointerEvent) => {
-  pointerInfo.value = { x: Math.round(e.clientX), y: Math.round(e.clientY), status: 'Appuyé' }
-  sendSystemNotification('Pointer', `Contact à (${pointerInfo.value.x}, ${pointerInfo.value.y})`)
-}
-const handlePointerMove = (e: PointerEvent) => {
-  if (pointerInfo.value.status === 'Appuyé') {
-    pointerInfo.value = { ...pointerInfo.value, x: Math.round(e.clientX), y: Math.round(e.clientY) }
-  }
-}
-const handlePointerUp = () => {
-  pointerInfo.value.status = 'Relâché'
-  sendSystemNotification('Pointer', 'Contact relâché')
-}
-
-// --- Contact Picker API ---
-const selectedContact = ref<{ name?: string[]; tel?: string[]; email?: string[] } | null>(null)
-const contactPickerSupported = ref(typeof navigator !== 'undefined' && 'contacts' in navigator)
-const pickContact = async () => {
-  try {
-    const [contact] = await (navigator as any).contacts.select(['name', 'tel', 'email'], {
-      multiple: false,
-    })
-    selectedContact.value = contact
-    const contactName = contact.name?.[0] || 'Inconnu'
-    sendSystemNotification('Contact Picker', `Contact sélectionné : ${contactName}`)
-  } catch (e) {
-    sendSystemNotification('Contact Picker', 'Aucun contact sélectionné ou erreur.')
-  }
-}
-
-// --- Share API ---
-const shareSupported = ref(typeof navigator !== 'undefined' && 'share' in navigator)
-const shareApp = async () => {
-  try {
-    await navigator.share({
-      title: 'VueApp - Ressources Internes',
-      text: 'Découvre ma super appli Vue avec les APIs natives du navigateur !',
-      url: window.location.href,
-    })
-    sendSystemNotification('Partage', 'Application partagée avec succès !')
-  } catch (e) {
-    sendSystemNotification('Partage', 'Partage annulé ou non supporté.')
-  }
-}
+const { coords, geoStatus, getLocation } = useGeolocation(sendSystemNotification)
+const { alertCount, incrementAlert, resetAlert } = useAlertCounter(sendSystemNotification)
+const { pointerInfo, handlePointerDown, handlePointerMove, handlePointerUp } =
+  usePointerTracker(sendSystemNotification)
+const { selectedContact, contactPickerSupported, pickContact } =
+  useContactPicker(sendSystemNotification)
+const { shareSupported, shareApp } = useWebShare(sendSystemNotification)
 </script>
 
 <template>
@@ -138,7 +58,7 @@ const shareApp = async () => {
         <CardHeader class="flex flex-row items-center space-x-4">
           <div class="p-2 bg-blue-100 rounded-lg"><Database class="w-5 h-5 text-blue-600" /></div>
           <div class="flex items-center gap-2 mb-2">
-            <CardTitle>LocalStorage</CardTitle>
+            <CardTitle>Ajouter au Stockage Local</CardTitle>
           </div>
         </CardHeader>
         <CardContent class="space-y-4">
@@ -146,8 +66,56 @@ const shareApp = async () => {
             v-model="storageValue"
             class="w-full flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Texte à stocker..."
+            @keyup.enter="addToStorage"
           />
-          <Button @click="saveToStorage" class="w-full">Enregistrer</Button>
+          <Button @click="addToStorage" class="w-full">➕ Ajouter</Button>
+        </CardContent>
+      </Card>
+
+      <!-- Section Éléments Stockés Localement -->
+      <Card>
+        <CardHeader class="flex flex-row items-center space-x-4">
+          <div class="p-2 bg-emerald-100 rounded-lg">
+            <Database class="w-5 h-5 text-emerald-600" />
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <CardTitle>Éléments Stockés</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div v-if="storageItems.length" class="space-y-2 max-h-72 overflow-y-auto">
+            <div
+              v-for="item in storageItems"
+              :key="item.id"
+              class="flex items-start justify-between gap-2 p-3 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+            >
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-sm text-emerald-900 break-words">{{ item.value }}</p>
+                <p class="text-xs text-emerald-600 mt-1">
+                  {{ new Date(item.timestamp).toLocaleString('fr-FR') }}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                @click="removeFromStorage(item.id)"
+                class="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+              >
+                ✕
+              </Button>
+            </div>
+          </div>
+          <div v-else class="text-sm text-muted-foreground text-center py-8">
+            📦 Aucun élément stocké. Ajoute-en via le champ ci-contre !
+          </div>
+          <Button
+            v-if="storageItems.length"
+            @click="clearAllStorage"
+            variant="destructive"
+            class="w-full"
+          >
+            🗑️ Vider tout
+          </Button>
         </CardContent>
       </Card>
 
@@ -173,7 +141,7 @@ const shareApp = async () => {
             </Badge>
           </div>
           <Button size="sm" @click="incrementAlert">+1 Alerte</Button>
-          <Button size="sm" variant="ghost" @click="alertCount = 0">Reset</Button>
+          <Button size="sm" variant="ghost" @click="resetAlert">Reset</Button>
         </CardContent>
       </Card>
 
@@ -209,11 +177,23 @@ const shareApp = async () => {
         </CardHeader>
         <CardContent class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
-            <Badge :variant="notifPermission === 'granted' ? 'default' : 'secondary'">
+            <Badge
+              :variant="
+                notifPermission === 'granted'
+                  ? 'default'
+                  : notifPermission === 'denied'
+                    ? 'destructive'
+                    : 'secondary'
+              "
+            >
               {{ notifPermission }}
             </Badge>
           </div>
-          <Button size="sm" @click="requestNotif" :disabled="notifPermission === 'granted'">
+          <Button
+            size="sm"
+            @click="requestNotif"
+            :disabled="notifPermission === 'granted' || notifPermission === 'unsupported'"
+          >
             Activer
           </Button>
         </CardContent>
