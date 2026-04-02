@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -20,6 +20,26 @@ const formData = ref({
   city: '',
 })
 
+const history = ref<Array<typeof formData.value>>([])
+
+function loadHistory() {
+  const raw = localStorage.getItem('formHistory')
+  history.value = raw ? JSON.parse(raw) : []
+}
+
+function saveHistory() {
+  localStorage.setItem('formHistory', JSON.stringify(history.value))
+}
+
+function clearHistory() {
+  localStorage.removeItem('formHistory')
+  history.value = []
+}
+
+onMounted(() => {
+  loadHistory()
+})
+
 function nextStep() {
   if (step.value < 3) step.value++
 }
@@ -29,12 +49,15 @@ function prevStep() {
 }
 
 function submitForm() {
+  // Ajoute la soumission à l'historique local
+  history.value.unshift({ ...formData.value })
+  saveHistory()
   alert('Formulaire envoyé : ' + JSON.stringify(formData.value))
 }
 </script>
 
 <template>
-  <div class="flex justify-center">
+  <div class="flex flex-col items-center">
     <Card class="w-full max-w-lg">
       <CardHeader class="mb-4">
         <CardTitle class="text-2xl font-bold">Inscription</CardTitle>
@@ -97,5 +120,18 @@ function submitForm() {
         <Button v-else @click="submitForm" class="w-full md:w-auto">Confirmer</Button>
       </CardFooter>
     </Card>
+    <!-- Historique des soumissions -->
+    <div v-if="history.length" class="w-full max-w-lg mt-8">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-semibold text-lg">Historique des formulaires</h3>
+        <Button variant="destructive" size="sm" @click="clearHistory">Vider l'historique</Button>
+      </div>
+      <ul class="space-y-2">
+        <li v-for="(item, idx) in history" :key="idx" class="p-3 rounded border bg-muted">
+          <div class="font-medium">{{ item.firstName }} {{ item.lastName }}</div>
+          <div class="text-sm text-muted-foreground">{{ item.email }} — {{ item.city }}</div>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>

@@ -4,15 +4,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast/use-toast'
-import { MapPin, Bell, Database, Touchpad, AlertTriangle } from 'lucide-vue-next'
+import { MapPin, Bell, Database, Touchpad, AlertTriangle, Users, Share2 } from 'lucide-vue-next'
 
 const { toast } = useToast()
+
+// --- Notifications système ---
+function sendSystemNotification(title: string, body: string) {
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.ico' })
+  } else {
+    Notification.requestPermission().then((permission) => {
+      if (permission === 'granted') {
+        new Notification(title, { body, icon: '/favicon.ico' })
+      }
+    })
+  }
+}
 
 // --- Stockage Interne (LocalStorage) ---
 const storageValue = ref(localStorage.getItem('user_preference') || '')
 const saveToStorage = () => {
   localStorage.setItem('user_preference', storageValue.value)
   toast({ title: 'Succès', description: 'Valeur enregistrée dans LocalStorage' })
+  sendSystemNotification('Stockage local', 'Valeur enregistrée dans LocalStorage !')
 }
 
 // --- Géolocalisation ---
@@ -21,6 +35,7 @@ const geoStatus = ref('Pas encore demandée')
 const getLocation = () => {
   if (!navigator.geolocation) {
     geoStatus.value = 'Non supportée'
+    sendSystemNotification('Géolocalisation', 'Non supportée sur cet appareil.')
     return
   }
   geoStatus.value = 'Recherche...'
@@ -28,9 +43,14 @@ const getLocation = () => {
     (pos) => {
       coords.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
       geoStatus.value = 'Localisé'
+      sendSystemNotification(
+        'Géolocalisation',
+        `Position : ${coords.value.lat.toFixed(4)}, ${coords.value.lng.toFixed(4)}`,
+      )
     },
     () => {
       geoStatus.value = 'Erreur/Refusé'
+      sendSystemNotification('Géolocalisation', 'Erreur ou refus de la localisation.')
     },
   )
 }
@@ -41,28 +61,63 @@ const requestNotif = async () => {
   const permission = await Notification.requestPermission()
   notifPermission.value = permission
   if (permission === 'granted') {
-    new Notification('Félicitations !', {
-      body: 'Les notifications sont activées.',
-      icon: '/favicon.ico',
-    })
+    sendSystemNotification('Notifications activées', 'Les notifications système sont activées !')
   }
 }
 
-// --- Gestion Alertes (Simulée) ---
+// --- Gestion Alertes (Système) ---
 const alertCount = ref(3)
-const incrementAlert = () => alertCount.value++
+const incrementAlert = () => {
+  alertCount.value++
+  sendSystemNotification('Nouvelle alerte', `Tu as ${alertCount.value} alerte(s) !`)
+}
 
 // --- Pointer Events (Remplaçant Touch pour PC/Mobile) ---
 const pointerInfo = ref({ x: 0, y: 0, status: 'Aucun contact' })
 const handlePointerDown = (e: PointerEvent) => {
   pointerInfo.value = { x: Math.round(e.clientX), y: Math.round(e.clientY), status: 'Appuyé' }
+  sendSystemNotification('Pointer', `Contact à (${pointerInfo.value.x}, ${pointerInfo.value.y})`)
 }
 const handlePointerMove = (e: PointerEvent) => {
   if (pointerInfo.value.status === 'Appuyé') {
     pointerInfo.value = { ...pointerInfo.value, x: Math.round(e.clientX), y: Math.round(e.clientY) }
   }
 }
-const handlePointerUp = () => (pointerInfo.value.status = 'Relâché')
+const handlePointerUp = () => {
+  pointerInfo.value.status = 'Relâché'
+  sendSystemNotification('Pointer', 'Contact relâché')
+}
+
+// --- Contact Picker API ---
+const selectedContact = ref<{ name?: string[]; tel?: string[]; email?: string[] } | null>(null)
+const contactPickerSupported = ref(typeof navigator !== 'undefined' && 'contacts' in navigator)
+const pickContact = async () => {
+  try {
+    const [contact] = await (navigator as any).contacts.select(['name', 'tel', 'email'], {
+      multiple: false,
+    })
+    selectedContact.value = contact
+    const contactName = contact.name?.[0] || 'Inconnu'
+    sendSystemNotification('Contact Picker', `Contact sélectionné : ${contactName}`)
+  } catch (e) {
+    sendSystemNotification('Contact Picker', 'Aucun contact sélectionné ou erreur.')
+  }
+}
+
+// --- Share API ---
+const shareSupported = ref(typeof navigator !== 'undefined' && 'share' in navigator)
+const shareApp = async () => {
+  try {
+    await navigator.share({
+      title: 'VueApp - Ressources Internes',
+      text: 'Découvre ma super appli Vue avec les APIs natives du navigateur !',
+      url: window.location.href,
+    })
+    sendSystemNotification('Partage', 'Application partagée avec succès !')
+  } catch (e) {
+    sendSystemNotification('Partage', 'Partage annulé ou non supporté.')
+  }
+}
 </script>
 
 <template>
@@ -203,28 +258,45 @@ const handlePointerUp = () => (pointerInfo.value.status = 'Relâché')
           </p>
         </CardContent>
       </Card>
-    </div>
 
-    <div class="flex flex-col gap-4">
-      <div class="flex flex-col md:flex-row gap-4">
-        <div class="flex-1 card-section">
-          <!-- ...Stockage... -->
-        </div>
-        <div class="flex-1 card-section">
-          <!-- ...Alertes... -->
-        </div>
-      </div>
-      <div class="flex flex-col md:flex-row gap-4">
-        <div class="flex-1 card-section">
-          <!-- ...Géolocalisation... -->
-        </div>
-        <div class="flex-1 card-section">
-          <!-- ...Notifications... -->
-        </div>
-      </div>
-      <div class="card-section mt-4">
-        <!-- ...Pointer Events... -->
-      </div>
+      <!-- Section Contact Picker -->
+      <Card>
+        <CardHeader class="flex flex-row items-center space-x-4">
+          <div class="p-2 bg-indigo-100 rounded-lg"><Users class="w-5 h-5 text-indigo-600" /></div>
+          <div class="flex items-center gap-2 mb-2">
+            <CardTitle>Contact Picker</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div v-if="selectedContact" class="text-sm p-3 bg-muted rounded-md space-y-1">
+            <p><strong>Nom :</strong> {{ selectedContact.name?.[0] || '-' }}</p>
+            <p><strong>Tél :</strong> {{ selectedContact.tel?.[0] || '-' }}</p>
+            <p><strong>Email :</strong> {{ selectedContact.email?.[0] || '-' }}</p>
+          </div>
+          <div v-else class="text-sm text-muted-foreground p-3">Aucun contact sélectionné</div>
+          <Button @click="pickContact" :disabled="!contactPickerSupported" class="w-full">
+            {{ contactPickerSupported ? 'Sélectionner un contact' : 'Non supporté' }}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <!-- Section Share API -->
+      <Card>
+        <CardHeader class="flex flex-row items-center space-x-4">
+          <div class="p-2 bg-pink-100 rounded-lg"><Share2 class="w-5 h-5 text-pink-600" /></div>
+          <div class="flex items-center gap-2 mb-2">
+            <CardTitle>Partager l'appli</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <p class="text-sm text-muted-foreground">
+            Partage cette application via les canaux disponibles sur ton système.
+          </p>
+          <Button @click="shareApp" :disabled="!shareSupported" class="w-full">
+            {{ shareSupported ? '📤 Partager' : 'Non supporté' }}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
