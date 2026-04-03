@@ -7,8 +7,27 @@ on:
       - master
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Vitest unit tests
+        run: npm run test:unit
+
   build-and-deploy:
     runs-on: ubuntu-latest
+    needs: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,7 +55,7 @@ jobs:
           # On envoie le build (dist), le code du back (server), et les fichiers de dépendances
           source: 'dist/,package.json,package-lock.json,server/'
           target: ${{ secrets.VPS_TARGET_PATH }}
-          strip_components: 0 # On garde la structure pour que 'dist' reste 'dist'
+          strip_components: 0
 
       - name: Post-deploy SSH commands
         uses: appleboy/ssh-action@master
@@ -46,17 +65,13 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            # 1. On charge l'environnement (Très important pour NVM et Node.js)
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             export PATH=$PATH:/usr/local/bin:/usr/bin
 
-            # 2. On va dans le dossier cible
             cd ${{ secrets.VPS_TARGET_PATH }}
 
-            # 3. On installe les dépendances
             npm install --omit=dev
 
-            # 4. On relance le back-end
             pm2 reload webapp-back || pm2 start server/index.js --name webapp-back
             pm2 save
