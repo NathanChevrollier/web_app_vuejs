@@ -38,7 +38,6 @@ jobs:
           target: ${{ secrets.VPS_TARGET_PATH }}
           strip_components: 0 # On garde la structure pour que 'dist' reste 'dist'
 
-      # 3. RELOAD & INSTALL SUR LE VPS (La magie opère ici)
       - name: Post-deploy SSH commands
         uses: appleboy/ssh-action@master
         with:
@@ -47,17 +46,17 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
+            # 1. On charge l'environnement (Très important pour NVM et Node.js)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH=$PATH:/usr/local/bin:/usr/bin
+
+            # 2. On va dans le dossier cible
             cd ${{ secrets.VPS_TARGET_PATH }}
 
-            # Installation des dépendances de production uniquement (gain de place)
+            # 3. On installe les dépendances
             npm install --omit=dev
 
-            # Installation de PM2 si absent (global)
-            sudo npm install -g pm2 || true
-
-            # Gestion du Back-end avec PM2
-            # On essaie de recharger sans coupure (reload), sinon on démarre (start)
+            # 4. On relance le back-end
             pm2 reload webapp-back || pm2 start server/index.js --name webapp-back
-
-            # Sauvegarde de la liste PM2 pour qu'elle survive au reboot du VPS
             pm2 save
