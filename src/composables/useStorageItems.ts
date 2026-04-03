@@ -8,7 +8,17 @@ export interface StorageItem {
 
 const STORAGE_KEY = 'appStoredItems'
 
-export function useStorageItems(onNotify: (title: string, body: string) => void) {
+export type UseStorageItemsReturn = {
+  storageValue: ReturnType<typeof ref<string>>
+  storageItems: ReturnType<typeof ref<StorageItem[]>>
+  addToStorage: () => void
+  removeFromStorage: (id: string) => void
+  clearAllStorage: () => void
+}
+
+export function useStorageItems(
+  onNotify: (title: string, body: string) => void,
+): UseStorageItemsReturn {
   const storageValue = ref('')
   const storageItems = ref<StorageItem[]>([])
 

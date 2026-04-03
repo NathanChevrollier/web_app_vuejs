@@ -13,6 +13,10 @@
     font-weight: 700;
     letter-spacing: -0.01em;
   }
+
+  .site-mode-admin :is(.border, .border-b, .border-t, .border-l, .border-r, .border-x, .border-y) {
+    border-color: theme('colors.red.500') !important;
+  }
 }
 
 @layer components {

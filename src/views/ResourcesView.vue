@@ -24,7 +24,7 @@ const {
 } = useStorageItems(sendSystemNotification)
 
 const addToStorage = () => {
-  const value = storageValue.value.trim()
+  const value = storageValue.value!.trim()
   if (!value) return
 
   addToStorageRaw()
@@ -83,7 +83,10 @@ const { shareSupported, shareApp } = useWebShare(sendSystemNotification)
           </div>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div v-if="storageItems.length" class="space-y-2 max-h-72 overflow-y-auto">
+          <div
+            v-if="storageItems && storageItems.length"
+            class="space-y-2 max-h-72 overflow-y-auto"
+          >
             <div
               v-for="item in storageItems"
               :key="item.id"
@@ -109,7 +112,7 @@ const { shareSupported, shareApp } = useWebShare(sendSystemNotification)
             📦 Aucun élément stocké. Ajoute-en via le champ ci-contre !
           </div>
           <Button
-            v-if="storageItems.length"
+            v-if="storageItems && storageItems.length"
             @click="clearAllStorage"
             variant="destructive"
             class="w-full"

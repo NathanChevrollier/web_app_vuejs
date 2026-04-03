@@ -2,10 +2,15 @@
 import { RouterView } from 'vue-router'
 import NavBar from '@/components/NavBar.vue'
 import { Toaster } from '@/components/ui/toast'
+import { useAuthMode } from '@/composables/useAuthMode'
+
+const auth = useAuthMode()
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div
+    :class="['min-h-screen bg-slate-50', auth.isAdmin.value ? 'site-mode-admin' : 'site-mode-user']"
+  >
     <NavBar />
 
     <main class="max-w-7xl mx-auto py-8 px-4">

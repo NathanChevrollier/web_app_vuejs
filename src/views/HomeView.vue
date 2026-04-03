@@ -14,7 +14,7 @@
         <button class="btn-primary text-lg">Tester le formulaire</button>
       </router-link>
     </div>
-    <div class="grid gap-8 md:grid-cols-3 w-full max-w-5xl">
+    <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-4 w-full max-w-6xl">
       <div class="card-section">
         <h3 class="section-title flex items-center gap-2">
           <span>📝</span> Formulaire Multi-étapes
@@ -40,6 +40,14 @@
         <p class="section-desc">Stockage, notifications, géolocalisation, touch events et plus !</p>
         <router-link to="/resources" class="text-primary hover:underline font-medium"
           >Explorer →</router-link
+        >
+      </div>
+
+      <div class="card-section">
+        <h3 class="section-title flex items-center gap-2"><span>🧪</span> Mini API REST Express</h3>
+        <p class="section-desc">Crée, modifie et supprime des items pour tester les endpoints.</p>
+        <router-link to="/api-test" class="text-primary hover:underline font-medium"
+          >Tester l'API →</router-link
         >
       </div>
     </div>
